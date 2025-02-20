@@ -169,7 +169,8 @@ export default {
           courseReceiverType: this.notificationForm.courseReceiverType,
           content: this.notificationForm.content,
           startTime: this.notificationForm.startTime ? dayjs(this.notificationForm.startTime).format('YYYY-MM-DD HH:mm:ss') : null,
-          endTime: this.notificationForm.endTime ? dayjs(this.notificationForm.endTime).format('YYYY-MM-DD HH:mm:ss') : null
+          endTime: this.notificationForm.endTime ? dayjs(this.notificationForm.endTime).format('YYYY-MM-DD HH:mm:ss') : null,
+          sendTime: dayjs().format('YYYY-MM-DD HH:mm:ss')
         }
 
         await axios.post('/admin/notifications', formData)

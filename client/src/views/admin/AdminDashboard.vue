@@ -60,6 +60,16 @@
           <div slot="header">
             <span>课程评分分布</span>
           </div>
+           <!-- 添加下拉框 -->
+           <el-select v-model="selectedCourse" @change="handleCourseChange" placeholder="请选择课程">
+            <el-option
+              v-for="course in courseList"
+              :key="course.id"
+              :label="course.name"
+              :value="course.id"
+            >
+            </el-option>
+          </el-select>
           <div class="chart-container">
             <div ref="teacherScoreChart" style="height: 300px"></div>
           </div>
@@ -151,7 +161,10 @@ export default {
       coursePageSize: 10,
       totalCourses: 0,
       trendCurrentPage: 1,
-      trendTotal: 0
+      trendTotal: 0,
+      selectedCourse: null,
+      courseList: [],
+      loading: false
     }
   },
   mounted () {
@@ -159,6 +172,7 @@ export default {
     this.$nextTick(() => {
       this.initCharts()
       this.fetchStatistics()
+      this.fetchCourseList()
     })
   },
   beforeDestroy () {
@@ -172,7 +186,7 @@ export default {
   methods: {
     async fetchStatistics () {
       try {
-        const response = await axios.get('/admin/dashboard/statistics')
+        const response = await axios.get('/admin/statistics')
         this.statistics = response.data
         this.updateCharts()
       } catch (error) {
@@ -209,7 +223,7 @@ export default {
     async updateCharts () {
       try {
         // 获取教师评分数据
-        const scoreResponse = await axios.get('/admin/dashboard/teacher-scores')
+        const scoreResponse = await axios.get('/admin/teacher-scores')
         if (this.charts.teacherScore) {
           this.updateTeacherScoreChart(scoreResponse.data)
         }
@@ -229,7 +243,7 @@ export default {
     },
     async fetchCourseScores () {
       try {
-        const response = await axios.get('/admin/dashboard/course-scores', {
+        const response = await axios.get('/admin/course-scores', {
           params: {
             page: this.currentPage,
             pageSize: 10
@@ -259,7 +273,7 @@ export default {
         },
         tooltip: {
           trigger: 'item',
-          formatter: '{b}: {c}%'
+          formatter: '{b}: {c}人 ({d}%)'
         },
         legend: {
           orient: 'vertical',
@@ -272,11 +286,11 @@ export default {
             type: 'pie',
             radius: '50%',
             data: [
-              { value: 18.89, name: '优秀(>=90)' },
-              { value: 35.53, name: '良好(80-89)' },
-              { value: 29.01, name: '中等(70-79)' },
-              { value: 15.82, name: '及格(60-69)' },
-              { value: 0.75, name: '不及格(<60)' }
+              { value: data.excellent || 0, name: '优秀(>=90)' },
+              { value: data.good || 0, name: '良好(80-89)' },
+              { value: data.average || 0, name: '中等(70-79)' },
+              { value: data.pass || 0, name: '及格(60-69)' },
+              { value: data.fail || 0, name: '不及格(<60)' }
             ],
             emphasis: {
               itemStyle: {
@@ -483,7 +497,7 @@ export default {
     },
     async fetchCourseTrends () {
       try {
-        const response = await axios.get('/admin/dashboard/course-trends')
+        const response = await axios.get('/admin/course-trends')
         if (this.charts.trend) {
           this.updateTrendChart(response.data)
         }
@@ -497,7 +511,7 @@ export default {
     },
     async fetchEvaluationTrends () {
       try {
-        const response = await axios.get('/admin/dashboard/trends')
+        const response = await axios.get('/admin/trends')
         if (this.charts.evaluationTrend) {
           this.updateEvaluationTrendChart(response.data)
         }
@@ -561,6 +575,36 @@ export default {
         ]
       }
       this.charts.evaluationTrend.setOption(option)
+    },
+    // 获取课程列表数据
+    async fetchCourseList () {
+      try {
+        const response = await axios.get('/admin/courses')
+        this.courseList = response.data
+      } catch (error) {
+        console.error('获取课程列表数据失败:', error)
+        this.$message.error('获取课程列表数据失败')
+      }
+    },
+    // 处理课程选择变化
+    async handleCourseChange (courseId) {
+      this.selectedCourse = courseId
+      await this.fetchCourseScoreData(courseId)
+    },
+    // 获取课程评分数据
+    async fetchCourseScoreData (courseId) {
+      try {
+        this.loading = true
+        const response = await axios.get(`/admin/course-scores/${courseId}`)
+        if (this.charts.teacherScore) {
+          this.updateTeacherScoreChart(response.data)
+        }
+      } catch (error) {
+        console.error('获取课程评分数据失败:', error)
+        this.$message.error('获取课程评分数据失败')
+      } finally {
+        this.loading = false
+      }
     }
   }
 }

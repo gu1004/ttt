@@ -40,8 +40,8 @@ const adminController = {
           // 创建学生通知
           const [studentResult] = await db.query(
             `INSERT INTO notifications
-             (title, content, type, target_type, course_id, start_time, end_time, created_by, status, send_time)
-             VALUES (?, ?, ?, 'students', ?, ?, ?, ?, 'sent', NOW())`,
+             (title, content, type, target_type, course_id, start_time, end_time, created_by, send_time)
+             VALUES (?, ?, ?, 'students', ?, ?, ?, ?, NOW())`,
             [
               studentTitle,
               studentContent,
@@ -82,8 +82,8 @@ const adminController = {
           // 创建教师通知
           const [teacherResult] = await db.query(
             `INSERT INTO notifications
-             (title, content, type, target_type, course_id, start_time, end_time, created_by, status, send_time)
-             VALUES (?, ?, ?, 'teachers', ?, ?, ?, ?, 'sent', NOW())`,
+             (title, content, type, target_type, course_id, start_time, end_time, created_by, send_time)
+             VALUES (?, ?, ?, 'teachers', ?, ?, ?, ?, NOW())`,
             [
               teacherTitle,
               teacherContent,
@@ -124,8 +124,8 @@ const adminController = {
 
         const [result] = await db.query(
           `INSERT INTO notifications
-           (title, content, type, target_type, created_by, status, send_time)
-           VALUES (?, ?, ?, ?, ?, 'sent', NOW())`,
+           (title, content, type, target_type, created_by, send_time)
+           VALUES (?, ?, ?, ?, ?, NOW())`,
           [title, notificationContent, notificationType, targetType, adminId]
         );
 
@@ -298,6 +298,28 @@ const adminController = {
     } catch (error) {
       console.error('发送评价完成通知失败:', error);
       res.status(500).json({ message: '发送评价完成通知失败' });
+    }
+  },
+
+  // 获取课程列表
+  getCourses: async (req, res) => {
+    try {
+      const [courses] = await db.query(`
+        SELECT
+          c.id,
+          c.name,
+          t.name as teacher_name,
+          c.start_date,
+          c.end_date
+        FROM courses c
+        LEFT JOIN teachers t ON c.teacher_id = t.id
+        ORDER BY c.name
+      `)
+
+      res.json(courses)
+    } catch (error) {
+      console.error('获取课程列表失败:', error)
+      res.status(500).json({ message: '获取课程列表失败' })
     }
   }
 };

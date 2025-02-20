@@ -55,7 +55,8 @@ const authController = {
               username,
               name,
               password,
-              'student' as role
+              'student' as role,
+              active
             FROM students
             WHERE username = ?
           `
@@ -69,7 +70,8 @@ const authController = {
               username,
               name,
               password,
-              'teacher' as role
+              'teacher' as role,
+              active
             FROM teachers
             WHERE username = ?
           `
@@ -106,6 +108,12 @@ const authController = {
 
       const user = rows[0]
       console.log('找到用户:', { ...user, password: '***' })
+
+      // 检查用户是否被禁用
+      if (role !== 'admin' && user.active === 0) {
+        console.log('用户已被禁用')
+        return res.status(403).json({ message: '你的账号被禁用了' })
+      }
 
       // 验证密码
       if (password !== user.password) {

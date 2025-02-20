@@ -114,11 +114,26 @@
     <!-- 评分分布 -->
     <el-col :span="24" style="margin-top: 20px">
       <el-card class="chart-card">
-        <div slot="header">
-          <span>评分分布</span>
+        <div slot="header" class="chart-header">
+          <span>课程评分分布</span>
+          <div class="filter-section">
+            <el-select
+              v-model="selectedCourseId"
+              placeholder="请选择课程"
+              @change="handleCourseChange"
+              style="width: 200px">
+              <el-option
+                v-for="course in courses"
+                :key="course.id"
+                :label="course.name"
+                :value="course.id">
+              </el-option>
+            </el-select>
+          </div>
         </div>
         <div class="chart-container">
-          <div ref="distributionChart" style="height: 400px"></div>
+          <div v-if="selectedCourseId" ref="distributionChart" style="height: 400px"></div>
+          <div v-else class="no-data">请选择一个课程查看评分分布</div>
         </div>
       </el-card>
     </el-col>
@@ -150,13 +165,21 @@ export default {
       currentPage: 1,
       pageSize: 10,
       total: 0,
-      loading: false
+      loading: false,
+      distributionCurrentPage: 1,
+      distributionPageSize: 10,
+      distributionTotal: 0,
+      courseDistributions: {},
+      distributionCharts: {},
+      courses: [],
+      selectedCourseId: null
     }
   },
   mounted () {
     this.fetchStatistics()
     this.initCharts()
     this.fetchData()
+    this.fetchCourses()
   },
   beforeDestroy () {
     // 销毁图表实例
@@ -164,6 +187,9 @@ export default {
       chart && chart.dispose()
     })
     window.removeEventListener('resize', this.handleResize)
+    Object.values(this.distributionCharts).forEach(chart => {
+      chart && chart.dispose()
+    })
   },
   methods: {
     async fetchStatistics () {
@@ -340,7 +366,11 @@ export default {
     },
     async fetchScoreDistribution () {
       try {
-        const { data } = await axios.get('/admin/score-distribution')
+        const { data } = await axios.get('/admin/score-distribution', {
+          params: {
+            courseId: this.selectedCourseId
+          }
+        })
         this.updateDistributionChart(data)
       } catch (error) {
         this.$message.error('获取评分分布数据失败')
@@ -398,6 +428,13 @@ export default {
       this.courseChart.setOption(option)
     },
     updateDistributionChart (distribution) {
+      if (!this.$refs.distributionChart) return
+
+      if (this.distributionChart) {
+        this.distributionChart.dispose()
+      }
+
+      this.distributionChart = echarts.init(this.$refs.distributionChart)
       const option = {
         tooltip: {
           trigger: 'item',
@@ -405,7 +442,8 @@ export default {
         },
         legend: {
           orient: 'vertical',
-          left: 'left'
+          left: 'left',
+          data: ['优秀(>=90)', '良好(80-89)', '中等(70-79)', '及格(60-69)', '不及格(<60)']
         },
         series: [
           {
@@ -426,12 +464,24 @@ export default {
           }
         ]
       }
-
       this.distributionChart.setOption(option)
     },
     handlePageChange (page) {
       this.currentPage = page
       this.fetchCourseAnalysis()
+    },
+    handleCourseChange () {
+      if (this.selectedCourseId) {
+        this.fetchScoreDistribution()
+      }
+    },
+    async fetchCourses () {
+      try {
+        const response = await axios.get('/admin/courses')
+        this.courses = response.data
+      } catch (error) {
+        this.$message.error('获取课程列表失败')
+      }
     }
   }
 }
@@ -488,5 +538,24 @@ export default {
 .pagination-container {
   margin-top: 20px;
   text-align: right;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filter-section {
+  margin-left: 20px;
+}
+
+.no-data {
+  height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #909399;
+  font-size: 14px;
 }
 </style>

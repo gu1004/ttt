@@ -30,9 +30,13 @@ const evaluationController = {
     try {
       const { id } = req.params
       const { start_time, end_time } = req.body
+      const adminId = req.user.id  // 从请求中获取当前登录的管理员ID
 
       console.log('更新评价时间:', { id, start_time, end_time })
 
+      await db.query('START TRANSACTION')
+
+      // 更新课程评价时间
       await db.query(
         `UPDATE courses
          SET start_time = STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'),
@@ -41,8 +45,10 @@ const evaluationController = {
         [start_time, end_time, id]
       )
 
+      await db.query('COMMIT')
       res.json({ message: '评价时间更新成功' })
     } catch (error) {
+      await db.query('ROLLBACK')
       console.error('更新评价时间失败:', error)
       res.status(500).json({ message: '更新评价时间失败' })
     }

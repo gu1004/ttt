@@ -26,13 +26,6 @@
           {{ formatDate(scope.row.send_time) }}
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态">
-        <template slot-scope="scope">
-          <el-tag :type="getStatusType(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
       <el-table-column label="操作" width="120">
         <template slot-scope="scope">
           <el-button
@@ -135,22 +128,6 @@ export default {
         course: '特定课程'
       }
       return types[type] || type
-    },
-    getStatusType (status) {
-      const types = {
-        draft: 'info',
-        scheduled: 'warning',
-        sent: 'success'
-      }
-      return types[status] || 'info'
-    },
-    getStatusText (status) {
-      const texts = {
-        draft: '草稿',
-        scheduled: '待发送',
-        sent: '已发送'
-      }
-      return texts[status] || status
     },
     viewNotification (notification) {
       this.currentNotification = notification

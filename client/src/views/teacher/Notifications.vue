@@ -2,7 +2,7 @@
   <div class="notifications">
     <h2>评价通知</h2>
 
-    <el-table :data="notifications" style="width: 100%" @row-click="handleRowClick">
+    <el-table :data="notifications" style="width: 100%">
       <el-table-column width="50" align="center">
         <template slot-scope="scope">
           <el-badge is-dot class="unread-badge" v-if="!scope.row.read" />
@@ -10,7 +10,11 @@
       </el-table-column>
       <el-table-column prop="title" label="通知标题">
         <template slot-scope="scope">
-          <span :class="{ 'unread': !scope.row.read }">{{ scope.row.title }}</span>
+          <span
+            :class="{ 'unread': !scope.row.read }"
+            @click="viewNotification(scope.row)"
+            style="cursor: pointer"
+          >{{ scope.row.title }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="course_name" label="课程名称" />
@@ -77,10 +81,14 @@ export default {
     formatDate (date) {
       return date ? dayjs(date).format('YYYY-MM-DD HH:mm:ss') : '未设置'
     },
-    async handleRowClick (row) {
+    async viewNotification (row) {
+      // 显示通知详情
+      this.currentNotification = { ...row }
+      this.dialogVisible = true
+
       try {
         if (!row.read) {
-          // 先标记为已读
+          // 标记为已读
           await axios.put(`/teacher/notifications/${row.id}/read`)
 
           // 更新本地通知状态
@@ -90,10 +98,6 @@ export default {
             row.read = true
           }
         }
-
-        // 成功标记已读后再显示详情
-        this.currentNotification = { ...row }
-        this.dialogVisible = true
       } catch (error) {
         console.error('处理通知失败:', error)
         this.$message.error('操作失败，请重试')

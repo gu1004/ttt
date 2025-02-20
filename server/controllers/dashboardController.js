@@ -247,31 +247,35 @@ const dashboardController = {
   // 获取评分分布数据
   async getScoreDistribution(req, res) {
     try {
+      const courseId = req.query.courseId
+
+      if (!courseId) {
+        return res.status(400).json({ message: '请提供课程ID' })
+      }
+
+      // 获取指定课程的评分分布数据
       const [distribution] = await pool.query(`
         SELECT
           CASE
-            WHEN (content_richness + content_update + content_organization +
-                  teaching_method_diversity + teaching_interaction + teaching_resource +
-                  teacher_attitude + teacher_ability + teacher_personality +
-                  course_objective + course_difficulty + course_pace +
-                  knowledge_grasp + ability_improvement + interest_stimulation) >= 60 THEN '及格(>=60)'
+            WHEN total_score >= 90 THEN '优秀(>=90)'
+            WHEN total_score >= 80 THEN '良好(80-89)'
+            WHEN total_score >= 70 THEN '中等(70-79)'
+            WHEN total_score >= 60 THEN '及格(60-69)'
             ELSE '不及格(<60)'
           END as score_range,
-          COUNT(*) as count,
-          ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) as percentage
+          COUNT(*) as count
         FROM evaluations
-        WHERE status = 'approved'
+        WHERE course_id = ? AND status = 'approved'
         GROUP BY
           CASE
-            WHEN (content_richness + content_update + content_organization +
-                  teaching_method_diversity + teaching_interaction + teaching_resource +
-                  teacher_attitude + teacher_ability + teacher_personality +
-                  course_objective + course_difficulty + course_pace +
-                  knowledge_grasp + ability_improvement + interest_stimulation) >= 60 THEN '及格(>=60)'
+            WHEN total_score >= 90 THEN '优秀(>=90)'
+            WHEN total_score >= 80 THEN '良好(80-89)'
+            WHEN total_score >= 70 THEN '中等(70-79)'
+            WHEN total_score >= 60 THEN '及格(60-69)'
             ELSE '不及格(<60)'
           END
-        ORDER BY score_range DESC
-      `)
+        ORDER BY score_range
+      `, [courseId])
 
       res.json(distribution)
     } catch (error) {
@@ -315,6 +319,31 @@ const dashboardController = {
       res.status(500).json({ message: '获取课程平均分趋势失败' })
     }
   },
+
+  // 获取单个课程的评分分布
+  async getCourseScoreDistribution(req, res) {
+    try {
+      const courseId = req.params.courseId
+
+      const query = `
+        SELECT
+          COUNT(CASE WHEN total_score >= 90 THEN 1 END) as excellent,
+          COUNT(CASE WHEN total_score >= 80 AND total_score < 90 THEN 1 END) as good,
+          COUNT(CASE WHEN total_score >= 70 AND total_score < 80 THEN 1 END) as average,
+          COUNT(CASE WHEN total_score >= 60 AND total_score < 70 THEN 1 END) as pass,
+          COUNT(CASE WHEN total_score < 60 THEN 1 END) as fail
+        FROM evaluations
+        WHERE course_id = ? AND status = 'approved'
+      `
+
+      const [result] = await pool.query(query, [courseId])
+
+      res.json(result[0])
+    } catch (error) {
+      console.error('获取课程评分分布失败:', error)
+      res.status(500).json({ message: '获取课程评分分布失败' })
+    }
+  }
 }
 
 module.exports = dashboardController

@@ -31,7 +31,6 @@ CREATE TABLE `notifications` (
   `end_time` DATETIME,
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,
-  `status` ENUM('draft', 'scheduled', 'sent') NOT NULL DEFAULT 'draft',
   FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
   FOREIGN KEY (created_by) REFERENCES administrators(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

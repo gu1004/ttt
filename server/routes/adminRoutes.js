@@ -368,12 +368,15 @@ router.delete('/users/:id', async (req, res) => {
 })
 
 // 仪表盘相关路由
-router.get('/dashboard/statistics', dashboardController.getStatistics)
-router.get('/dashboard/teacher-scores', dashboardController.getTeacherScores)
-router.get('/dashboard/keywords', dashboardController.getKeywords)
-router.get('/dashboard/trends', dashboardController.getTrends)
-router.get('/dashboard/course-scores', dashboardController.getCourseScores)
-router.get('/dashboard/course-trends', dashboardController.getCourseTrends)
+router.get('/statistics', auth, dashboardController.getStatistics)
+router.get('/teacher-scores', auth, dashboardController.getTeacherScores)
+router.get('/keywords', auth, dashboardController.getKeywords)
+router.get('/trends', auth, dashboardController.getTrends)
+router.get('/course-scores', auth, dashboardController.getCourseScores)
+router.get('/course-analysis', auth, dashboardController.getCourseAnalysis)
+router.get('/score-distribution', auth, dashboardController.getScoreDistribution)
+router.get('/course-trends', auth, dashboardController.getCourseTrends)
+router.get('/course-scores/:courseId', auth, dashboardController.getCourseScoreDistribution)
 
 // 通知相关路由
 router.post('/notifications', auth, adminController.createNotification)
@@ -398,5 +401,8 @@ router.get('/classes', async (req, res) => {
     res.status(500).json({ message: '获取班级列表失败' })
   }
 })
+
+// 课程相关路由
+router.get('/courses', auth, adminController.getCourses)
 
 module.exports = router

@@ -34,20 +34,29 @@
             <span>{{ scope.row.teacherName }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column
+          prop="status_text"
+          label="状态"
+          width="120"
+          align="center"
+        >
           <template slot-scope="scope">
             <el-tag :type="getStatusType(scope.row)">
               {{ getStatusText(scope.row) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column
+          label="操作"
+          width="120"
+          align="center"
+        >
           <template slot-scope="scope">
             <el-button
-              type="primary"
-              size="small"
-              @click="handleEvaluate(scope.row)"
+              :type="getButtonType(scope.row)"
+              size="mini"
               :disabled="isButtonDisabled(scope.row)"
+              @click="handleAction(scope.row)"
             >
               {{ getButtonText(scope.row) }}
             </el-button>
@@ -58,273 +67,299 @@
 
     <!-- 评价表单对话框 -->
     <el-dialog
-      :title="dialogTitle"
-      width="70%"
+      title="课程评价"
       :visible.sync="dialogVisible"
+      width="60%"
       :before-close="handleClose"
     >
-      <!-- 查看评价的内容 -->
-      <div v-if="currentCourse.evaluated || currentCourse.expired">
-        <div class="evaluation-detail">
-          <div class="detail-header">
-            <h3>{{ currentCourse.name }}</h3>
-            <div class="course-info">
-              <span class="info-item">授课教师：{{ currentCourse.teacherName }}</span>
-              <span class="info-item" v-if="currentCourse.evaluationStatus === 'pending'">状态：审核中</span>
-            </div>
-          </div>
-          <el-divider></el-divider>
-          <div class="detail-content">
-            <!-- 教学内容维度 -->
-            <div class="evaluation-dimension">
-              <span class="dimension-label">教学内容</span>
-              <span class="score-label">得分</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">内容丰富性</span>
-                <span class="standard">(10分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.content_richness }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">内容更新性</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.content_update }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">内容组织</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.content_organization }}</span>
-            </div>
-
-            <!-- 教学方法维度 -->
-            <div class="evaluation-dimension">
-              <span class="dimension-label">教学方法</span>
-              <span class="score-label">得分</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">教学方法多样性</span>
-                <span class="standard">(10分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.teaching_method_diversity }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">互动性</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.teaching_interaction }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">教学资源利用</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.teaching_resource }}</span>
-            </div>
-
-            <!-- 教师表现维度 -->
-            <div class="evaluation-dimension">
-              <span class="dimension-label">教师表现</span>
-              <span class="score-label">得分</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">教学态度</span>
-                <span class="standard">(10分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.teacher_attitude }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">教学能力</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.teacher_ability }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">亲和力</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.teacher_personality }}</span>
-            </div>
-
-            <!-- 课程设计维度 -->
-            <div class="evaluation-dimension">
-              <span class="dimension-label">课程设计</span>
-              <span class="score-label">得分</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">课程目标明确性</span>
-                <span class="standard">(10分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.course_objective }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">课程难度</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.course_difficulty }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">课程进度</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.course_pace }}</span>
-            </div>
-
-            <!-- 学习效果维度 -->
-            <div class="evaluation-dimension">
-              <span class="dimension-label">学习效果</span>
-              <span class="score-label">得分</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">知识掌握</span>
-                <span class="standard">(10分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.knowledge_grasp }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">能力提升</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.ability_improvement }}</span>
-            </div>
-            <div class="score-item">
-              <div class="score-label-group">
-                <span class="label">兴趣激发</span>
-                <span class="standard">(5分)</span>
-              </div>
-              <span class="score-value">{{ evaluationDetail.interest_stimulation }}</span>
-            </div>
-
-            <!-- 总分显示 -->
-            <div class="total-score1">
-              <span class="total-label1">总分</span>
-              <span class="total-value1">{{ evaluationDetail.total_score }} / 100</span>
-            </div>
-
-            <div class="comment-section">
-              <div class="comment-label">评价内容：</div>
-              <div class="comment-content">{{ evaluationDetail.comment }}</div>
-            </div>
-            <div class="evaluation-time">
-              评价时间：{{ formatDate(evaluationDetail.create_time) }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 评价表单的内容 -->
-      <div v-else>
-        <div class="evaluation-form" v-if="currentCourse.id">
-          <!-- 错误提示区域 -->
+      <div v-if="currentCourse" class="evaluation-form">
+        <!-- 添加评价时间提示 -->
+        <div class="evaluation-time-info">
           <el-alert
-            v-if="submitError"
-            :title="submitError"
-            type="error"
-            :closable="true"
+            :title="getTimeInfoTitle(currentCourse)"
+            :type="getTimeInfoType(currentCourse)"
+            :description="getTimeInfoDescription(currentCourse)"
             show-icon
-            style="margin-bottom: 20px;"
-            @close="submitError = ''"
-          />
-
-          <!-- 课程信息 -->
-          <div class="course-info">
-            <h3>课程信息</h3>
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="课程名称">{{ currentCourse.name }}</el-descriptions-item>
-              <el-descriptions-item label="授课教师">{{ currentCourse.teacherName }}</el-descriptions-item>
-            </el-descriptions>
-          </div>
-
-          <!-- 评分表格 -->
-          <div class="evaluation-table">
-            <h3>课程评价</h3>
-            <el-table
-              :data="evaluationItems"
-              border
-              style="width: 100%"
-              :span-method="objectSpanMethod">
-              <el-table-column
-                prop="dimension"
-                label="评价维度"
-                width="150">
-              </el-table-column>
-              <el-table-column
-                prop="indicator"
-                label="评价指标"
-                width="180">
-              </el-table-column>
-              <el-table-column
-                prop="standard"
-                label="评分标准(分)"
-                width="150"
-                align="center">
-              </el-table-column>
-              <el-table-column
-                label="评分"
-                width="180"
-                align="center">
-                <template slot-scope="scope">
-                  <el-input-number
-                    v-model="evaluationForm[scope.row.field]"
-                    :min="0"
-                    :max="scope.row.standard"
-                    :step="1"
-                    @change="calculateTotal"
-                    size="small">
-                  </el-input-number>
-                </template>
-              </el-table-column>
-              <el-table-column
-                prop="remark"
-                label="备注"
-                show-overflow-tooltip>
-              </el-table-column>
-            </el-table>
-
-            <!-- 总分显示 -->
-            <div class="total-score">
-              <span class="total-label">总分</span>
-              <span class="total-value">{{ totalScore }} / 100</span>
+            :closable="false"
+            style="margin-bottom: 20px"
+              />
             </div>
 
-            <!-- 评价意见 -->
-            <div class="comment-section">
-              <h3>评价意见</h3>
-              <el-input
-                type="textarea"
-                v-model="evaluationForm.comment"
-                :rows="4"
-                placeholder="请输入您的评价意见（优点、建议等）">
-              </el-input>
-            </div>
+        <!-- 添加错误提示区域 -->
+        <el-alert
+          v-if="submitError"
+          :title="submitError"
+          type="error"
+          show-icon
+          :closable="true"
+          @close="submitError = ''"
+          style="margin-bottom: 20px"
+        />
+
+        <!-- 评价表单内容 -->
+        <el-form
+          ref="evaluationForm"
+          :model="evaluationForm"
+          :rules="rules"
+          label-width="120px"
+          :disabled="!isInEvaluationPeriod(currentCourse)"
+        >
+          <!-- 内容维度 (30分) -->
+          <div class="evaluation-dimension">
+            <span class="dimension-label">课程内容 (30分)</span>
           </div>
-        </div>
+          <el-form-item label="内容丰富性" prop="content_richness">
+            <el-rate v-model="evaluationForm.content_richness" :max="10" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="内容更新性" prop="content_update">
+            <el-rate v-model="evaluationForm.content_update" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="内容组织" prop="content_organization">
+            <el-rate v-model="evaluationForm.content_organization" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+
+          <!-- 教学方法 (20分) -->
+          <div class="evaluation-dimension">
+            <span class="dimension-label">教学方法 (20分)</span>
+          </div>
+          <el-form-item label="教学方法多样性" prop="teaching_method_diversity">
+            <el-rate v-model="evaluationForm.teaching_method_diversity" :max="10" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="互动性" prop="teaching_interaction">
+            <el-rate v-model="evaluationForm.teaching_interaction" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="教学资源利用" prop="teaching_resource">
+            <el-rate v-model="evaluationForm.teaching_resource" :max="5" :texts="rateTexts" show-text></el-rate>
+              </el-form-item>
+
+          <!-- 教师表现 (20分) -->
+          <div class="evaluation-dimension">
+            <span class="dimension-label">教师表现 (20分)</span>
+                </div>
+          <el-form-item label="教学态度" prop="teacher_attitude">
+            <el-rate v-model="evaluationForm.teacher_attitude" :max="10" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="教学能力" prop="teacher_ability">
+            <el-rate v-model="evaluationForm.teacher_ability" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="亲和力" prop="teacher_personality">
+            <el-rate v-model="evaluationForm.teacher_personality" :max="5" :texts="rateTexts" show-text></el-rate>
+              </el-form-item>
+
+          <!-- 课程特点 (15分) -->
+          <div class="evaluation-dimension">
+            <span class="dimension-label">课程特点 (15分)</span>
+                </div>
+          <el-form-item label="课程目标明确性" prop="course_objective">
+            <el-rate v-model="evaluationForm.course_objective" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="课程难度" prop="course_difficulty">
+            <el-rate v-model="evaluationForm.course_difficulty" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="课程进度" prop="course_pace">
+            <el-rate v-model="evaluationForm.course_pace" :max="5" :texts="rateTexts" show-text></el-rate>
+              </el-form-item>
+
+          <!-- 学习效果 (15分) -->
+          <div class="evaluation-dimension">
+            <span class="dimension-label">学习效果 (15分)</span>
+                </div>
+          <el-form-item label="知识掌握" prop="knowledge_grasp">
+            <el-rate v-model="evaluationForm.knowledge_grasp" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="能力提升" prop="ability_improvement">
+            <el-rate v-model="evaluationForm.ability_improvement" :max="5" :texts="rateTexts" show-text></el-rate>
+          </el-form-item>
+          <el-form-item label="兴趣激发" prop="interest_stimulation">
+            <el-rate v-model="evaluationForm.interest_stimulation" :max="5" :texts="rateTexts" show-text></el-rate>
+              </el-form-item>
+
+          <!-- 评价意见 -->
+          <el-form-item label="评价意见" prop="comment">
+                <el-input
+                  type="textarea"
+                  v-model="evaluationForm.comment"
+                  :rows="4"
+              placeholder="请输入您的具体评价意见">
+            </el-input>
+              </el-form-item>
+
+          <!-- 总分显示 -->
+          <div class="total-score-display">
+            <span class="total-score-label">总分：</span>
+            <span class="total-score-value">{{ calculateTotal() }} / 100</span>
+          </div>
+        </el-form>
       </div>
+
       <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">关闭</el-button>
+        <el-button @click="dialogVisible = false">取消</el-button>
         <el-button
-          v-if="!currentCourse.evaluated && !currentCourse.expired"
           type="primary"
           @click="submitEvaluation"
+          :disabled="!isInEvaluationPeriod(currentCourse)"
         >
           提交评价
         </el-button>
       </span>
+    </el-dialog>
+
+    <!-- 评价详情对话框 -->
+    <el-dialog
+      title="评价详情"
+      :visible.sync="evaluationDetailVisible"
+      width="60%"
+      :before-close="handleDialogClose"
+    >
+      <div v-if="evaluationDetail" class="evaluation-detail">
+        <div class="course-info">
+          <h3>{{ evaluationDetail.course_name }}</h3>
+          <p>授课教师：{{ evaluationDetail.teacher_name }}</p>
+          <p>评价时间：{{ formatDate(evaluationDetail.create_time) }}</p>
+        </div>
+
+        <!-- 总分展示 -->
+        <el-card class="total-score-card">
+          <div class="total-score-container">
+            <div class="total-score-label">总分</div>
+            <div class="total-score-value">{{ evaluationDetail.total_score }} / 100</div>
+          </div>
+        </el-card>
+
+        <!-- 评分项展示 -->
+        <el-card class="score-card">
+          <!-- 内容维度 (30分) -->
+          <div class="score-section">
+            <h4>课程内容 (30分)</h4>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">内容丰富性 (10分)：</span>
+                  <span class="value">{{ evaluationDetail.content_richness }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">内容更新性 (10分)：</span>
+                  <span class="value">{{ evaluationDetail.content_update }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">内容组织 (10分)：</span>
+                  <span class="value">{{ evaluationDetail.content_organization }}</span>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 教学方法 (20分) -->
+          <div class="score-section">
+            <h4>教学方法 (20分)</h4>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">教学方法多样性 (10分)：</span>
+                  <span class="value">{{ evaluationDetail.teaching_method_diversity }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">互动性 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.teaching_interaction }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">教学资源利用 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.teaching_resource }}</span>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 教师表现 (20分) -->
+          <div class="score-section">
+            <h4>教师表现 (20分)</h4>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">教学态度 (10分)：</span>
+                  <span class="value">{{ evaluationDetail.teacher_attitude }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">教学能力 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.teacher_ability }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">亲和力 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.teacher_personality }}</span>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 课程特点 (15分) -->
+          <div class="score-section">
+            <h4>课程特点 (15分)</h4>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">课程目标明确性 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.course_objective }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">课程难度 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.course_difficulty }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">课程进度 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.course_pace }}</span>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 学习效果 (15分) -->
+          <div class="score-section">
+            <h4>学习效果 (15分)</h4>
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">知识掌握 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.knowledge_grasp }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">能力提升 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.ability_improvement }}</span>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="score-item">
+                  <span class="label">兴趣激发 (5分)：</span>
+                  <span class="value">{{ evaluationDetail.interest_stimulation }}</span>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 评价意见 -->
+          <div class="comment-section">
+            <h4>评价意见</h4>
+            <p>{{ evaluationDetail.comment || '暂无评价意见' }}</p>
+          </div>
+        </el-card>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -340,6 +375,7 @@ export default {
       pendingCourses: [],
       dialogVisible: false,
       currentCourse: {},
+      submitError: '',
       evaluationForm: {
         content_richness: 0,
         content_update: 0,
@@ -382,7 +418,8 @@ export default {
         keyword: '',
         status: ''
       },
-      evaluationDetail: {},
+      evaluationDetail: null,
+      evaluationDetailVisible: false,
       dialogTitle: '',
       evaluationItems: [
         { dimension: '教学内容', indicator: '内容丰富性', standard: 10, field: 'content_richness', remark: '课程内容是否全面、深入，是否涵盖了课程大纲中的所有重要知识点' },
@@ -401,8 +438,7 @@ export default {
         { dimension: '学习效果', indicator: '能力提升', standard: 5, field: 'ability_improvement', remark: '是否提升了相关能力，如分析问题、解决问题、创新思维等能力' },
         { dimension: '学习效果', indicator: '兴趣激发', standard: 5, field: 'interest_stimulation', remark: '是否激发了对学科的兴趣，是否培养了持续学习的动力' }
       ],
-      totalScore: 0,
-      submitError: ''
+      totalScore: 0
     }
   },
   created () {
@@ -516,91 +552,182 @@ export default {
     },
     async submitEvaluation () {
       try {
+        // 清除之前的错误信息
+        this.submitError = ''
+
+        // 检查评价时间
+        if (!this.isInEvaluationPeriod(this.currentCourse)) {
+          const now = new Date()
+          const startTime = new Date(this.currentCourse.start_time)
+          const endTime = new Date(this.currentCourse.end_time)
+
+          console.log('评价提交时间检查:', {
+            当前时间: now.toISOString(),
+            开始时间: startTime.toISOString(),
+            截止时间: endTime.toISOString(),
+            是否已开始: now >= startTime,
+            是否已结束: now > endTime
+          })
+
+          if (now < startTime) {
+            this.submitError = `评价还未开始，开始时间：${startTime.toISOString()}`
+          } else {
+            this.submitError = `评价已截止，截止时间：${endTime.toISOString()}`
+          }
+          return
+        }
+
         // 检查所有评分是否已填写
         const hasEmptyScores = Object.keys(this.evaluationForm).some(key => {
           return key !== 'comment' && this.evaluationForm[key] === 0
         })
 
         if (hasEmptyScores) {
-          this.$message.warning('请为所有评价指标打分')
+          this.submitError = '请为所有评价指标打分'
           return
         }
 
         if (!this.evaluationForm.comment.trim()) {
-          this.$message.warning('请填写评价意见')
+          this.submitError = '请填写评价意见'
           return
         }
 
-        await axios.post(`/student/evaluations/${this.currentCourse.id}`, {
+        // 构建评价数据
+        const evaluationData = {
           ...this.evaluationForm,
-          courseId: this.currentCourse.id
-        })
+          comment: this.evaluationForm.comment.trim(),
+          total_score: Number(this.calculateTotal()),
+          course_id: this.currentCourse.id,
+          evaluation_time: new Date().toISOString()
+        }
 
-        this.$message.success('评价提交成功')
-        this.dialogVisible = false
-        this.fetchPendingCourses()
+        console.log('提交评价数据:', evaluationData)
+
+        const response = await axios.post(`/student/evaluations/${this.currentCourse.id}`, evaluationData)
+
+        if (response.data.message) {
+          this.$message.success(response.data.message)
+          this.dialogVisible = false
+          this.fetchPendingCourses() // 刷新课程列表
+        }
       } catch (error) {
         console.error('评价提交失败:', error)
-        this.submitError = error.response?.data?.message || '评价提交失败'
-        // 滚动到错误提示区域
-        this.$nextTick(() => {
-          const alertElement = document.querySelector('.el-alert')
-          if (alertElement) {
-            alertElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        })
+        this.submitError = error.response?.data?.message || '评价提交失败，请检查评分和评价内容'
+
+        // 输出详细错误信息
+        if (error.response) {
+          console.log('错误详情:', {
+            状态码: error.response.status,
+            错误信息: error.response.data,
+            请求数据: error.config.data
+          })
+        }
       }
     },
     handleSearch () {
       // 搜索功能通过计算属性自动实现
     },
     formatDate (date) {
-      if (!date) return ''
+      if (!date) return '未设置'
       return new Date(date).toLocaleString('zh-CN', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
       })
     },
     getStatusType (course) {
-      if (course.evaluationStatus === 'deleted') return 'danger'
-      if (!course.evaluationStatus) return 'warning'
-      const statusMap = {
-        pending: 'info',
-        approved: 'success',
-        rejected: 'danger'
+      if (course.expired && !course.evaluation_status) {
+        return 'danger' // 已截止且未评价显示红色
       }
-      return statusMap[course.evaluationStatus] || 'warning'
+      if (course.evaluation_status === 'approved') {
+        return 'success' // 已通过显示绿色
+      }
+      if (course.evaluation_status === 'pending') {
+        return 'info' // 审核中显示蓝色
+      }
+      if (course.evaluation_status === 'rejected') {
+        return 'danger' // 已驳回显示红色
+      }
+      return 'warning' // 其他情况显示黄色
     },
     getStatusText (course) {
-      if (course.evaluationStatus === 'deleted') return '已驳回'
-      if (!course.evaluationStatus) return '待评价'
-      const statusMap = {
-        pending: '审核中',
-        approved: '已通过',
-        rejected: '已驳回'
+      // 如果未设置评价时间，不显示已截止
+      if (!course.start_time || !course.end_time) {
+        if (course.evaluation_status === 'approved') {
+          return '已通过'
+        }
+        if (course.evaluation_status === 'pending') {
+          return '审核中'
+        }
+        if (course.evaluation_status === 'rejected') {
+          return '已驳回'
+        }
+        return '待评价'
       }
-      return statusMap[course.evaluationStatus] || '待评价'
+
+      if (this.isCourseExpired(course)) {
+        if (course.evaluation_status === 'approved') {
+          return '已通过'
+        }
+        if (course.evaluation_status === 'pending') {
+          return '审核中'
+        }
+        if (course.evaluation_status === 'rejected') {
+          return '已驳回'
+        }
+        return '已截止'
+      }
+      return course.status_text
+    },
+    getButtonType (course) {
+      if (course.evaluation_status === 'approved' || course.evaluation_status === 'pending') {
+        return 'success' // 已通过或待审核状态显示绿色
+      } else if (this.isCourseExpired(course)) {
+        return 'danger' // 已截止显示红色
+      } else {
+        return 'primary' // 其他状态显示蓝色
+      }
+    },
+    isCourseExpired (course) {
+      // 如果未设置评价时间，返回false
+      if (!course.start_time || !course.end_time) {
+        return false
+      }
+      const now = new Date()
+      const endTime = new Date(course.end_time)
+      return now > endTime
     },
     getButtonText (course) {
-      if (course.evaluationStatus === 'deleted') {
-        return course.expired ? '已截止' : '重新评价'
+      if (course.evaluation_status === 'approved' || course.evaluation_status === 'pending') {
+        return '查看评价'
       }
-      if (!course.evaluationStatus) return '去评价'
-      const buttonMap = {
-        pending: '查看评价',
-        approved: '查看评价',
-        rejected: course.expired ? '已截止' : '重新评价'
+
+      const now = new Date()
+      const endTime = course.end_time ? new Date(course.end_time) : null
+
+      if (now > endTime) {
+        return '已截止'
       }
-      return buttonMap[course.evaluationStatus] || '去评价'
+
+      if (course.evaluation_status === 'rejected') {
+        return '重新评价'
+      }
+
+      return '去评价'
     },
     isButtonDisabled (course) {
-      if (course.evaluationStatus === 'rejected' && course.expired) {
-        return true
+      if (course.evaluation_status === 'approved' || course.evaluation_status === 'pending') {
+        return false
       }
-      return false
+
+      const now = new Date()
+      const endTime = course.end_time ? new Date(course.end_time) : null
+
+      return now > endTime
     },
     objectSpanMethod ({ row, column, rowIndex, columnIndex }) {
       if (columnIndex === 0) {
@@ -622,12 +749,12 @@ export default {
     },
     calculateTotal () {
       let total = 0
-      // 遍历所有评分项
+      // 遍历所有评分项并计算总分
       this.evaluationItems.forEach(item => {
-        const score = Number(this.evaluationForm[item.field] || 0)
-        total += score
+        const score = this.evaluationForm[item.field]
+        total += score * (item.standard / 5) // 将5分制转换为对应的标准分
       })
-      this.totalScore = total
+      return Math.round(total) // 四舍五入到整数
     },
     calculateViewTotal () {
       if (!this.evaluationDetail) return 0
@@ -642,6 +769,117 @@ export default {
       })
 
       return Number(total.toFixed(1))
+    },
+    async handleAction (course) {
+      try {
+        // 如果评价状态是已通过或待审核，直接获取评价详情
+        if (course.evaluation_status === 'approved' || course.evaluation_status === 'pending') {
+          const response = await axios.get(`/student/evaluations/${course.id}`)
+          this.evaluationDetail = response.data
+          this.evaluationDetailVisible = true
+          return
+        }
+
+        // 对于其他状态，检查评价时间
+        if (course.end_time && new Date(course.end_time) < new Date()) {
+          this.$message.warning('评价时间已截止')
+          return
+        }
+
+        if (course.start_time && new Date(course.start_time) > new Date()) {
+          this.$message.warning(`评价还未开始，开始时间：${course.start_time}`)
+          return
+        }
+
+        // 如果是重新评价或首次评价，打开评价表单
+        this.currentCourse = course
+        this.resetForm() // 重置表单数据
+        this.dialogVisible = true
+      } catch (error) {
+        console.error('处理评价操作失败:', error)
+        this.$message.error(error.response?.data?.message || '操作失败')
+      }
+    },
+    checkEvaluationTime (course) {
+      const now = new Date()
+      const startTime = new Date(course.start_time)
+      const endTime = new Date(course.end_time)
+
+      if (now < startTime) {
+        this.$message.warning(`评价还未开始，开始时间：${course.start_time}`)
+        return false
+      }
+
+      if (now > endTime) {
+        return false
+      }
+    },
+    isInEvaluationPeriod (course) {
+      if (!course || !course.start_time || !course.end_time) {
+        console.log('课程评价时间未设置')
+        return false
+      }
+
+      const now = new Date()
+      const startTime = new Date(course.start_time)
+      const endTime = new Date(course.end_time)
+
+      // 记录时间检查日志
+      console.log('评价时间检查:', {
+        当前时间: now.toISOString(),
+        开始时间: startTime.toISOString(),
+        截止时间: endTime.toISOString()
+      })
+
+      return now >= startTime && now <= endTime
+    },
+    getTimeInfoTitle (course) {
+      if (!course.start_time || !course.end_time) {
+        return '评价时间未设置'
+      }
+
+      const now = new Date()
+      const startTime = new Date(course.start_time)
+      const endTime = new Date(course.end_time)
+
+      if (now < startTime) {
+        return '评价未开始'
+      } else if (now > endTime) {
+        return '评价已截止'
+      } else {
+        return '评价进行中'
+      }
+    },
+    getTimeInfoType (course) {
+      if (!course.start_time || !course.end_time) {
+        return 'warning'
+      }
+
+      const now = new Date()
+      const startTime = new Date(course.start_time)
+      const endTime = new Date(course.end_time)
+
+      if (now < startTime) {
+        return 'warning'
+      } else if (now > endTime) {
+        return 'error'
+      } else {
+        return 'success'
+      }
+    },
+    getTimeInfoDescription (course) {
+      if (!course.start_time || !course.end_time) {
+        return '请联系管理员设置评价时间'
+      }
+
+      const startTime = new Date(course.start_time)
+      const endTime = new Date(course.end_time)
+
+      return `评价时间：${startTime.toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })} 至 ${endTime.toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })}`
+    },
+    handleDialogClose () {
+      this.evaluationDetailVisible = false
+      this.evaluationDetail = null
     }
   }
 }
@@ -784,139 +1022,105 @@ export default {
   padding: 20px;
 }
 
-.detail-header {
+.course-info {
   margin-bottom: 20px;
 }
 
-.detail-header h3 {
-  margin: 0;
-  font-size: 20px;
+.course-info h3 {
+  margin-bottom: 10px;
   color: #303133;
 }
 
-.detail-header p {
+.course-info p {
   margin: 5px 0;
   color: #606266;
 }
 
-.detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.total-score-card {
+  margin-bottom: 20px;
 }
 
-.total-score-display {
-  text-align: right;
-  font-size: 18px;
-  font-weight: bold;
+.total-score-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.total-score-label {
+  font-size: 24px;
   color: #303133;
-  margin: 20px 0;
-  padding: 15px;
-  background-color: #f0f9eb;
-  border-radius: 4px;
+  margin-right: 20px;
+}
+
+.total-score-value {
+  font-size: 36px;
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.score-section {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.score-section h4 {
+  margin-bottom: 15px;
+  color: #303133;
+  border-left: 4px solid #409EFF;
+  padding-left: 10px;
+}
+
+.score-item {
+  margin-bottom: 15px;
+}
+
+.score-item .label {
+  color: #606266;
+}
+
+.score-item .value {
+  color: #303133;
+  font-weight: bold;
+  margin-left: 5px;
 }
 
 .comment-section {
   margin-top: 20px;
   padding: 15px;
-  background-color: #f8f9fa;
+  background: #f5f7fa;
   border-radius: 4px;
-  display: flex;
-  align-items: flex-start;
 }
 
-.comment-label {
+.comment-section h4 {
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.comment-section p {
+  color: #606266;
+  line-height: 1.6;
+}
+
+.total-score-display {
+  text-align: right;
+  padding: 20px;
+  font-size: 18px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+
+.total-score-label {
   font-weight: bold;
   color: #303133;
   margin-right: 10px;
-  white-space: nowrap;
 }
 
-.comment-content {
-  color: #606266;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.evaluation-time {
-  margin-top: 15px;
-  text-align: right;
-  color: #909399;
-  font-size: 14px;
-}
-
-.status-text {
-  color: #e6a23c;
-  font-weight: 500;
-}
-
-.evaluation-section {
-  margin-bottom: 30px;
-  padding: 20px;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-}
-
-.evaluation-section h3 {
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
-  color: #303133;
-}
-
-.el-rate {
-  margin-top: 10px;
-}
-
-.el-form-item {
-  margin-bottom: 25px;
-}
-
-.evaluation-table {
-  margin-top: 20px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
-}
-
-.evaluation-table h3 {
-  padding: 20px;
-  margin: 0;
-  border-bottom: 1px solid #ebeef5;
-  font-size: 18px;
-  color: #303133;
-}
-
-.evaluation-table :deep(.el-table) {
-  border: none;
-  border-radius: 8px;
-}
-
-.evaluation-table :deep(.el-table th) {
-  background-color: #f5f7fa;
-  color: #606266;
-  font-weight: 600;
-  padding: 12px 0;
-}
-
-.evaluation-table :deep(.el-table td) {
-  padding: 16px 0;
-}
-
-.evaluation-table :deep(.el-table--border td:first-child) {
-  border-left: none;
-}
-
-.evaluation-table :deep(.el-table--border td:last-child) {
-  border-right: none;
-}
-
-.evaluation-table :deep(.el-input-number) {
-  width: 120px;
-}
-
-.evaluation-table :deep(.el-input-number .el-input__inner) {
-  text-align: center;
+.total-score-value {
+  color: #f56c6c;
+  font-weight: bold;
+  font-size: 24px;
 }
 </style>
