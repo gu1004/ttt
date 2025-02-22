@@ -752,7 +752,8 @@ export default {
       // 遍历所有评分项并计算总分
       this.evaluationItems.forEach(item => {
         const score = this.evaluationForm[item.field]
-        total += score * (item.standard / 5) // 将5分制转换为对应的标准分
+        // 直接使用评分，因为el-rate组件已经按照标准分设置了max属性
+        total += score
       })
       return Math.round(total) // 四舍五入到整数
     },
