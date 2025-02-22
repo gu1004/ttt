@@ -10,9 +10,14 @@ const evaluationController = {
           c.id,
           c.id as courseId,
           c.name as courseName,
+          t.name as teacherName,
+          GROUP_CONCAT(DISTINCT cc.class_name) as classNames,
           c.start_time,
           c.end_time
         FROM courses c
+        LEFT JOIN teachers t ON c.teacher_id = t.id
+        LEFT JOIN course_classes cc ON c.id = cc.course_id
+        GROUP BY c.id, c.name, t.name, c.start_time, c.end_time
         ORDER BY c.start_time DESC
       `
       console.log('执行查询:', query)

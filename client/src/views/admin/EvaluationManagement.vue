@@ -4,7 +4,7 @@
     <div class="filter-section">
       <el-input
         v-model="searchQuery"
-        placeholder="搜索课程名称"
+        placeholder="搜索课程名称或教师名称"
         style="width: 300px"
         @input="handleSearch"
       />
@@ -26,6 +26,19 @@
         label="课程名称"
         align="center"
       />
+      <el-table-column
+        prop="teacherName"
+        label="授课教师"
+        align="center"
+      />
+      <el-table-column
+        prop="classNames"
+        label="班级"
+        align="center">
+        <template slot-scope="scope">
+          {{ scope.row.classNames ? scope.row.classNames.split(',').join('、') : '未分配班级' }}
+        </template>
+      </el-table-column>
       <el-table-column
         prop="startTime"
         label="评价开始时间"
@@ -90,6 +103,9 @@
         <el-form-item label="课程名称">
           <span>{{ editForm.courseName }}</span>
         </el-form-item>
+        <el-form-item label="授课教师">
+          <span>{{ editForm.teacherName }}</span>
+        </el-form-item>
         <el-form-item label="开始时间" prop="startTime">
           <el-date-picker
             v-model="editForm.startTime"
@@ -134,6 +150,7 @@ export default {
         id: null,
         courseId: null,
         courseName: '',
+        teacherName: '',
         startTime: null,
         endTime: null
       },
@@ -160,8 +177,10 @@ export default {
     filteredEvaluations () {
       let result = [...this.evaluationList]
       if (this.searchQuery) {
+        const keyword = this.searchQuery.toLowerCase()
         result = result.filter(item =>
-          item.courseName.toLowerCase().includes(this.searchQuery.toLowerCase())
+          item.courseName.toLowerCase().includes(keyword) ||
+          item.teacherName.toLowerCase().includes(keyword)
         )
       }
       // 计算分页
@@ -198,6 +217,7 @@ export default {
         id: record.id,
         courseId: record.courseId,
         courseName: record.courseName,
+        teacherName: record.teacherName,
         startTime: record.startTime ? dayjs(record.startTime) : null,
         endTime: record.endTime ? dayjs(record.endTime) : null
       }

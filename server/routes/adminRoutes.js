@@ -383,7 +383,7 @@ router.post('/notifications', auth, adminController.createNotification)
 router.get('/notifications', auth, adminController.getNotifications)
 router.post('/notifications/evaluation-start', auth, adminController.sendEvaluationStartNotification)
 router.post('/notifications/evaluation-due', auth, adminController.sendEvaluationDueNotification)
-router.post('/notifications/evaluation-complete', auth, adminController.sendEvaluationCompleteNotification)
+router.get('/courses/:courseId/evaluation-time', auth, adminController.getCourseEvaluationTime)
 
 // 获取所有班级列表
 router.get('/classes', async (req, res) => {
@@ -404,5 +404,47 @@ router.get('/classes', async (req, res) => {
 
 // 课程相关路由
 router.get('/courses', auth, adminController.getCourses)
+
+// 创建用户
+router.post('/users', async (req, res) => {
+  try {
+    const { username, password, role, name, email, department, studentId, class_name } = req.body
+    const table = role === 'student' ? 'students' : 'teachers'
+    const idField = role === 'student' ? 'student_id' : 'teacher_id'
+
+    // 检查用户名是否已存在
+    const [existingUsers] = await db.query(
+      `SELECT id FROM ${table} WHERE username = ?`,
+      [username]
+    )
+
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: '用户名已存在' })
+    }
+
+    // 开启事务
+    await db.query('START TRANSACTION')
+
+    // 创建用户
+    const [result] = await db.query(
+      `INSERT INTO ${table} (username, password, name, email, ${idField}, department, ${role === 'student' ? 'class' : 'title'})
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [username, password, name, email, studentId, department, role === 'student' ? class_name : req.body.title]
+    )
+
+    // 提交事务
+    await db.query('COMMIT')
+
+    res.status(201).json({
+      message: '创建成功',
+      userId: result.insertId
+    })
+  } catch (error) {
+    // 回滚事务
+    await db.query('ROLLBACK')
+    console.error('创建用户失败:', error)
+    res.status(500).json({ message: '创建用户失败' })
+  }
+})
 
 module.exports = router

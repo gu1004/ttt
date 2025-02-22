@@ -125,6 +125,12 @@
         <el-form-item :label="userForm.role === 'student' ? '学号' : '工号'" prop="studentId">
           <el-input v-model="userForm.studentId" />
         </el-form-item>
+        <el-form-item label="院系" prop="department">
+          <el-input v-model="userForm.department" />
+        </el-form-item>
+        <el-form-item v-if="userForm.role === 'student'" label="班级" prop="class_name">
+          <el-input v-model="userForm.class_name" />
+        </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input type="password" v-model="userForm.password" />
         </el-form-item>
@@ -206,7 +212,7 @@ export default {
   },
   computed: {
     rules () {
-      return {
+      const rules = {
         username: [
           { required: true, message: '请输入用户名', trigger: 'blur' },
           { min: 3, message: '用户名至少3个字符', trigger: 'blur' }
@@ -223,18 +229,27 @@ export default {
         department: [
           { required: true, message: '请输入院系', trigger: 'blur' }
         ],
-        studentId: [
+        class_name: [
+          { required: true, message: '请输入班级', trigger: 'blur' }
+        ]
+      }
+
+      // 只在创建用户时添加密码和学号/工号验证
+      if (!this.userForm.id) {
+        rules.password = [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { min: 6, message: '密码至少6个字符', trigger: 'blur' }
+        ]
+        rules.studentId = [
           {
             required: true,
             message: this.userForm.role === 'student' ? '请输入学号' : '请输入工号',
             trigger: 'blur'
           }
-        ],
-        password: [
-          { required: true, message: '请输入密码', trigger: 'blur' },
-          { min: 6, message: '密码至少6个字符', trigger: 'blur' }
         ]
       }
+
+      return rules
     },
     filteredUsers () {
       let result = this.users
@@ -294,7 +309,10 @@ export default {
         name: '',
         role: 'student',
         studentId: '',
-        password: ''
+        password: '',
+        department: '',
+        class_name: '',
+        title: ''
       }
       this.dialogVisible = true
       if (this.$refs.userForm) {

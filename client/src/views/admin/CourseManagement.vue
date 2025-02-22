@@ -25,6 +25,11 @@
       </el-table-column>
       <el-table-column prop="name" label="课程名称" />
       <el-table-column prop="teacher" label="教师" />
+      <el-table-column label="班级" min-width="150">
+        <template slot-scope="scope">
+          {{ formatClassNames(scope.row.classes) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="startDate" label="开课时间" width="180" />
       <el-table-column prop="endDate" label="结课时间" width="180" />
       <el-table-column label="操作" width="200">
@@ -212,7 +217,7 @@ export default {
       try {
         this.loading = true
         const response = await axios.get('/admin/courses')
-        console.log('获取课程列表响应:', response.data) // 添加调试日志
+        console.log('获取课程列表响应:', response.data)
         this.courses = response.data.map(course => ({
           ...course,
           teacherId: course.teacher_id,
@@ -220,12 +225,10 @@ export default {
           endDate: course.end_date,
           classes: Array.isArray(course.classes)
             ? course.classes
-            : (typeof course.classes === 'string' && course.classes
-                ? course.classes.split(',')
-                : [])
+            : (course.classes ? course.classes.split(',') : [])
         }))
       } catch (error) {
-        console.error('获取课程列表失败:', error) // 添加错误日志
+        console.error('获取课程列表失败:', error)
         this.$message.error('获取课程列表失败')
       } finally {
         this.loading = false
@@ -339,6 +342,10 @@ export default {
       } catch (error) {
         this.$message.error('操作失败')
       }
+    },
+    formatClassNames (classes) {
+      if (!classes || !classes.length) return '暂无班级'
+      return Array.isArray(classes) ? classes.join('、') : classes.split(',').join('、')
     }
   }
 }

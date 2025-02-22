@@ -16,9 +16,22 @@
     <!-- 课程列表 -->
     <el-table :data="filteredCourses" style="width: 100%; margin-bottom: 20px;">
       <el-table-column prop="name" label="课程名称" />
-      <el-table-column prop="start_date" label="开课时间" />
-      <el-table-column prop="end_date" label="结课时间" />
+      <el-table-column label="开课时间">
+        <template slot-scope="scope">
+          {{ formatDisplayDate(scope.row.start_date) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="结课时间">
+        <template slot-scope="scope">
+          {{ formatDisplayDate(scope.row.end_date) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="student_count" label="学生人数" />
+      <el-table-column label="授课班级" min-width="150">
+        <template slot-scope="scope">
+          <span>{{ formatClassNames(scope.row.class_names) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="120">
         <template slot-scope="scope">
           <el-button size="mini" type="primary" @click="editCourse(scope.row)">编辑</el-button>
@@ -65,11 +78,13 @@ export default {
         description: '',
         start_date: '',
         end_date: '',
+        class_names: '',
         original: {
           name: '',
           description: '',
           start_date: '',
-          end_date: ''
+          end_date: '',
+          class_names: ''
         }
       },
       rules: {
@@ -115,18 +130,38 @@ export default {
     handleSearch () {
       // 搜索功能通过计算属性 filteredCourses 实现
     },
+    formatClassNames (classNames) {
+      if (!classNames) return '暂无班级'
+      return classNames.split(',').join('、')
+    },
+    formatDate (date) {
+      if (!date) return null
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return null
+      // 修正为本地时区的日期
+      d.setMinutes(d.getMinutes() + d.getTimezoneOffset())
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    },
+    formatDisplayDate (date) {
+      if (!date) return '未设置'
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return '未设置'
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    },
     editCourse (course) {
       this.currentCourse = {
         id: course.id,
         name: course.name,
         description: course.description,
-        start_date: course.start_date ? new Date(course.start_date) : '',
-        end_date: course.end_date ? new Date(course.end_date) : '',
+        start_date: course.start_date ? new Date(new Date(course.start_date).getTime() + new Date().getTimezoneOffset() * 60000) : '',
+        end_date: course.end_date ? new Date(new Date(course.end_date).getTime() + new Date().getTimezoneOffset() * 60000) : '',
+        class_names: course.class_names,
         original: {
           name: course.name,
           description: course.description,
           start_date: course.start_date,
-          end_date: course.end_date
+          end_date: course.end_date,
+          class_names: course.class_names
         }
       }
       this.dialogVisible = true
@@ -167,12 +202,6 @@ export default {
         console.error('更新失败:', error)
         this.$message.error(error.response?.data?.message || '更新失败')
       }
-    },
-    formatDate (date) {
-      if (!date) return null
-      const d = new Date(date)
-      if (isNaN(d.getTime())) return null
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     }
   },
   created () {

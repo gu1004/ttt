@@ -13,7 +13,7 @@
       </el-form-item>
 
       <el-form-item label="选择课程" prop="courseId">
-        <el-select v-model="notificationForm.courseId" placeholder="请选择课程">
+        <el-select v-model="notificationForm.courseId" placeholder="请选择课程" @change="handleCourseChange">
           <el-option
             v-for="course in courses"
             :key="course.id"
@@ -148,6 +148,26 @@ export default {
         this.$message.error('获取课程列表失败')
       }
     },
+    async handleCourseChange (courseId) {
+      if (!courseId) return
+
+      if (this.notificationForm.notificationType === 'evaluation_start' ||
+          this.notificationForm.notificationType === 'evaluation_due') {
+        try {
+          const response = await axios.get(`/admin/courses/${courseId}/evaluation-time`)
+          const { startTime, endTime } = response.data
+
+          this.notificationForm.startTime = startTime ? dayjs(startTime) : null
+          this.notificationForm.endTime = endTime ? dayjs(endTime) : null
+
+          if (!startTime || !endTime) {
+            this.$message.warning('该课程尚未设置评价时间')
+          }
+        } catch (error) {
+          console.error('获取课程评价时间失败:', error)
+        }
+      }
+    },
     handleNotificationTypeChange () {
       // 重置课程接收方
       this.notificationForm.courseReceiverType = ''
@@ -156,6 +176,9 @@ export default {
       if (this.notificationForm.notificationType === 'evaluation_result') {
         this.notificationForm.startTime = null
         this.notificationForm.endTime = null
+      } else if (this.notificationForm.courseId) {
+        // 如果已选择课程，自动获取评价时间
+        this.handleCourseChange(this.notificationForm.courseId)
       }
     },
     async submitForm () {
@@ -182,6 +205,15 @@ export default {
     },
     resetForm () {
       this.$refs.notificationForm.resetFields()
+    }
+  },
+  watch: {
+    'notificationForm.courseId': {
+      handler: function (newVal) {
+        if (newVal) {
+          this.handleCourseChange(newVal)
+        }
+      }
     }
   },
   created () {

@@ -9,19 +9,22 @@ const teacherController = {
   getCourses: async (req, res) => {
     try {
       const teacherId = req.user.id
-      const [courses] = await db.query(`
+      const query = `
         SELECT
           c.id,
           c.name,
-          c.description,
           DATE_FORMAT(c.start_date, '%Y-%m-%d') as start_date,
           DATE_FORMAT(c.end_date, '%Y-%m-%d') as end_date,
-          (SELECT COUNT(*) FROM student_courses sc WHERE sc.course_id = c.id) as student_count
+          COUNT(DISTINCT sc.student_id) as student_count,
+          GROUP_CONCAT(DISTINCT cc.class_name) as class_names
         FROM courses c
+        LEFT JOIN course_classes cc ON c.id = cc.course_id
+        LEFT JOIN student_courses sc ON c.id = sc.course_id
         WHERE c.teacher_id = ?
-        ORDER BY c.created_at DESC
-      `, [teacherId])
+        GROUP BY c.id, c.name, c.start_date, c.end_date
+        ORDER BY c.start_date DESC`
 
+      const [courses] = await db.query(query, [teacherId])
       res.json(courses)
     } catch (error) {
       console.error('获取课程列表失败:', error)
@@ -81,11 +84,11 @@ const teacherController = {
         values.push(description)
       }
       if (start_date !== undefined && start_date !== null) {
-        updates.push('start_date = ?')
+        updates.push('start_date = STR_TO_DATE(?, "%Y-%m-%d")')
         values.push(start_date)
       }
       if (end_date !== undefined && end_date !== null) {
-        updates.push('end_date = ?')
+        updates.push('end_date = STR_TO_DATE(?, "%Y-%m-%d")')
         values.push(end_date)
       }
 

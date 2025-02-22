@@ -38,7 +38,7 @@ const adminController = {
           }
 
           // 创建学生通知
-          const [studentResult] = await db.query(
+          await db.query(
             `INSERT INTO notifications
              (title, content, type, target_type, course_id, start_time, end_time, created_by, send_time)
              VALUES (?, ?, ?, 'students', ?, ?, ?, ?, NOW())`,
@@ -51,15 +51,6 @@ const adminController = {
               endTime,
               adminId
             ]
-          );
-
-          // 创建学生阅读记录
-          await db.query(
-            `INSERT INTO notification_reads (notification_id, user_id, user_type)
-             SELECT ?, student_id, 'student'
-             FROM student_courses
-             WHERE course_id = ?`,
-            [studentResult.insertId, courseId]
           );
         }
 
@@ -80,7 +71,7 @@ const adminController = {
           }
 
           // 创建教师通知
-          const [teacherResult] = await db.query(
+          await db.query(
             `INSERT INTO notifications
              (title, content, type, target_type, course_id, start_time, end_time, created_by, send_time)
              VALUES (?, ?, ?, 'teachers', ?, ?, ?, ?, NOW())`,
@@ -93,13 +84,6 @@ const adminController = {
               endTime,
               adminId
             ]
-          );
-
-          // 创建教师阅读记录
-          await db.query(
-            `INSERT INTO notification_reads (notification_id, user_id, user_type)
-             VALUES (?, ?, 'teacher')`,
-            [teacherResult.insertId, teacherId]
           );
         }
       } else {
@@ -122,32 +106,12 @@ const adminController = {
           notificationContent += `\n\n补充说明：${content}`;
         }
 
-        const [result] = await db.query(
+        await db.query(
           `INSERT INTO notifications
            (title, content, type, target_type, created_by, send_time)
            VALUES (?, ?, ?, ?, ?, NOW())`,
           [title, notificationContent, notificationType, targetType, adminId]
         );
-
-        // 创建阅读记录
-        let userQuery = '';
-        const queryParams = [result.insertId];
-
-        if (targetType === 'students') {
-          userQuery = `
-            INSERT INTO notification_reads (notification_id, user_id, user_type)
-            SELECT ?, id, 'student' FROM students
-          `;
-        } else if (targetType === 'teachers') {
-          userQuery = `
-            INSERT INTO notification_reads (notification_id, user_id, user_type)
-            SELECT ?, id, 'teacher' FROM teachers
-          `;
-        }
-
-        if (userQuery) {
-          await db.query(userQuery, queryParams);
-        }
       }
 
       await db.query('COMMIT');
@@ -205,6 +169,9 @@ const adminController = {
   sendEvaluationStartNotification: async (req, res) => {
     try {
       const { courseId, startTime, endTime } = req.body;
+      const adminId = req.user.id;
+
+      await db.query('START TRANSACTION');
 
       // 获取课程信息
       const [courses] = await db.query(
@@ -213,6 +180,7 @@ const adminController = {
       );
 
       if (courses.length === 0) {
+        await db.query('ROLLBACK');
         return res.status(404).json({ message: '课程不存在' });
       }
 
@@ -220,18 +188,25 @@ const adminController = {
 
       // 向学生发送开始评价通知
       await db.query(`
-        INSERT INTO notifications (title, content, type, course_id, start_time, end_time, target_type)
-        VALUES (?, ?, 'evaluation_start', ?, ?, ?, 'students')
+        INSERT INTO notifications (
+          title, content, type, course_id,
+          start_time, end_time, target_type,
+          send_time, created_by
+        )
+        VALUES (?, ?, 'evaluation_start', ?, ?, ?, 'students', NOW(), ?)
       `, [
         `${courseName}课程评价开始`,
         `请在${new Date(endTime).toLocaleString('zh-CN')}之前完成${courseName}课程的教学评价。`,
         courseId,
         startTime,
-        endTime
+        endTime,
+        adminId
       ]);
 
+      await db.query('COMMIT');
       res.json({ message: '评价开始通知发送成功' });
     } catch (error) {
+      await db.query('ROLLBACK');
       console.error('发送评价开始通知失败:', error);
       res.status(500).json({ message: '发送评价开始通知失败' });
     }
@@ -241,6 +216,9 @@ const adminController = {
   sendEvaluationDueNotification: async (req, res) => {
     try {
       const { courseId } = req.body;
+      const adminId = req.user.id;
+
+      await db.query('START TRANSACTION');
 
       // 获取课程信息
       const [courses] = await db.query(
@@ -249,21 +227,28 @@ const adminController = {
       );
 
       if (courses.length === 0) {
+        await db.query('ROLLBACK');
         return res.status(404).json({ message: '课程不存在' });
       }
 
       // 向未完成评价的学生发送提醒
       await db.query(`
-        INSERT INTO notifications (title, content, type, course_id, target_type)
-        VALUES (?, ?, 'evaluation_due', ?, 'students')
+        INSERT INTO notifications (
+          title, content, type, course_id, target_type,
+          send_time, created_by
+        )
+        VALUES (?, ?, 'evaluation_due', ?, 'students', NOW(), ?)
       `, [
         `${courses[0].name}课程评价即将截止`,
         `请尽快完成${courses[0].name}课程的教学评价，截止时间为：${new Date(courses[0].end_time).toLocaleString('zh-CN')}`,
-        courseId
+        courseId,
+        adminId
       ]);
 
+      await db.query('COMMIT');
       res.json({ message: '评价截止提醒发送成功' });
     } catch (error) {
+      await db.query('ROLLBACK');
       console.error('发送评价截止通知失败:', error);
       res.status(500).json({ message: '发送评价截止通知失败' });
     }
@@ -273,6 +258,9 @@ const adminController = {
   sendEvaluationCompleteNotification: async (req, res) => {
     try {
       const { courseId } = req.body;
+      const adminId = req.user.id;
+
+      await db.query('START TRANSACTION');
 
       // 获取课程信息
       const [courses] = await db.query(
@@ -281,21 +269,28 @@ const adminController = {
       );
 
       if (courses.length === 0) {
+        await db.query('ROLLBACK');
         return res.status(404).json({ message: '课程不存在' });
       }
 
       // 向教师发送评价完成通知
       await db.query(`
-        INSERT INTO notifications (title, content, type, course_id, target_type)
-        VALUES (?, ?, 'evaluation_complete', ?, 'teachers')
+        INSERT INTO notifications (
+          title, content, type, course_id, target_type,
+          send_time, created_by
+        )
+        VALUES (?, ?, 'evaluation_complete', ?, 'teachers', NOW(), ?)
       `, [
         `${courses[0].name}课程评价已完成`,
         `${courses[0].name}课程的教学评价已完成，请查看评价报告。`,
-        courseId
+        courseId,
+        adminId
       ]);
 
+      await db.query('COMMIT');
       res.json({ message: '评价完成通知发送成功' });
     } catch (error) {
+      await db.query('ROLLBACK');
       console.error('发送评价完成通知失败:', error);
       res.status(500).json({ message: '发送评价完成通知失败' });
     }
@@ -304,22 +299,53 @@ const adminController = {
   // 获取课程列表
   getCourses: async (req, res) => {
     try {
-      const [courses] = await db.query(`
+      const query = `
         SELECT
           c.id,
           c.name,
-          t.name as teacher_name,
-          c.start_date,
-          c.end_date
+          c.description,
+          DATE_FORMAT(c.start_date, '%Y-%m-%d') as start_date,
+          DATE_FORMAT(c.end_date, '%Y-%m-%d') as end_date,
+          t.id as teacher_id,
+          t.name as teacher,
+          GROUP_CONCAT(DISTINCT cc.class_name) as classes
         FROM courses c
         LEFT JOIN teachers t ON c.teacher_id = t.id
-        ORDER BY c.name
-      `)
+        LEFT JOIN course_classes cc ON c.id = cc.course_id
+        GROUP BY c.id, c.name, c.description, c.start_date, c.end_date, t.id, t.name
+        ORDER BY c.start_date DESC`
 
+      const [courses] = await db.query(query)
       res.json(courses)
     } catch (error) {
       console.error('获取课程列表失败:', error)
       res.status(500).json({ message: '获取课程列表失败' })
+    }
+  },
+
+  // 获取课程评价时间
+  getCourseEvaluationTime: async (req, res) => {
+    try {
+      const { courseId } = req.params;
+
+      const [result] = await db.query(
+        `SELECT start_time, end_time
+         FROM courses
+         WHERE id = ?`,
+        [courseId]
+      );
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: '课程不存在' });
+      }
+
+      res.json({
+        startTime: result[0].start_time,
+        endTime: result[0].end_time
+      });
+    } catch (error) {
+      console.error('获取课程评价时间失败:', error);
+      res.status(500).json({ message: '获取课程评价时间失败' });
     }
   }
 };
