@@ -48,7 +48,6 @@
       </el-table-column>
       <el-table-column prop="username" label="用户名" width="120" />
       <el-table-column prop="name" label="姓名" width="100" />
-      <el-table-column prop="email" label="邮箱" min-width="200" show-overflow-tooltip />
       <el-table-column prop="role" label="角色" width="100">
         <template slot-scope="scope">
           {{ scope.row.role === 'student' ? '学生' : '教师' }}
@@ -128,8 +127,18 @@
         <el-form-item label="院系" prop="department">
           <el-input v-model="userForm.department" />
         </el-form-item>
-        <el-form-item v-if="userForm.role === 'student'" label="班级" prop="class_name">
-          <el-input v-model="userForm.class_name" />
+        <el-form-item
+          :label="userForm.role === 'student' ? '班级' : '职称'"
+          :prop="userForm.role === 'student' ? 'class_name' : 'title'"
+        >
+          <el-input
+            v-if="userForm.role === 'student'"
+            v-model="userForm.class_name"
+          />
+          <el-input
+            v-else-if="userForm.role === 'teacher'"
+            v-model="userForm.title"
+          />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input type="password" v-model="userForm.password" />
@@ -143,9 +152,6 @@
         </el-form-item>
         <el-form-item label="姓名" prop="name">
           <el-input v-model="userForm.name" />
-        </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="userForm.email" />
         </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="userForm.role" placeholder="选择角色" :disabled="!!userForm.id">
@@ -165,7 +171,7 @@
             v-model="userForm.class_name"
           />
           <el-input
-            v-else
+            v-else-if="userForm.role === 'teacher'"
             v-model="userForm.title"
           />
         </el-form-item>
@@ -200,57 +206,65 @@ export default {
       userForm: {
         username: '',
         name: '',
-        email: '',
         role: 'student',
+        studentId: '',
         department: '',
         class_name: '',
         title: '',
-        studentId: '',
-        password: ''
-      }
-    }
-  },
-  computed: {
-    rules () {
-      const rules = {
+        password: '',
+        active: true
+      },
+      rules: {
         username: [
-          { required: true, message: '请输入用户名', trigger: 'blur' },
-          { min: 3, message: '用户名至少3个字符', trigger: 'blur' }
+          { required: true, message: '请输入用户名', trigger: 'blur' }
         ],
         name: [
           { required: true, message: '请输入姓名', trigger: 'blur' }
         ],
-        email: [
-          { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-        ],
         role: [
           { required: true, message: '请选择角色', trigger: 'change' }
+        ],
+        studentId: [
+          { required: true, message: '请输入学号/工号', trigger: 'blur' }
         ],
         department: [
           { required: true, message: '请输入院系', trigger: 'blur' }
         ],
         class_name: [
-          { required: true, message: '请输入班级', trigger: 'blur' }
-        ]
-      }
-
-      // 只在创建用户时添加密码和学号/工号验证
-      if (!this.userForm.id) {
-        rules.password = [
-          { required: true, message: '请输入密码', trigger: 'blur' },
-          { min: 6, message: '密码至少6个字符', trigger: 'blur' }
-        ]
-        rules.studentId = [
           {
             required: true,
-            message: this.userForm.role === 'student' ? '请输入学号' : '请输入工号',
-            trigger: 'blur'
+            message: '请输入班级',
+            trigger: 'blur',
+            validator: (rule, value, callback) => {
+              if (this.userForm.role === 'student' && !value) {
+                callback(new Error('请输入班级'))
+              } else {
+                callback()
+              }
+            }
           }
+        ],
+        title: [
+          {
+            required: true,
+            message: '请输入职称',
+            trigger: 'blur',
+            validator: (rule, value, callback) => {
+              if (this.userForm.role === 'teacher' && !value) {
+                callback(new Error('请输入职称'))
+              } else {
+                callback()
+              }
+            }
+          }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' }
         ]
       }
-
-      return rules
-    },
+    }
+  },
+  computed: {
     filteredUsers () {
       let result = this.users
 
@@ -312,7 +326,8 @@ export default {
         password: '',
         department: '',
         class_name: '',
-        title: ''
+        title: '',
+        active: true
       }
       this.dialogVisible = true
       if (this.$refs.userForm) {
@@ -321,7 +336,17 @@ export default {
     },
     handleEdit (row) {
       this.dialogTitle = '编辑用户'
-      this.userForm = { ...row }
+      this.userForm = {
+        id: row.id,
+        username: row.username,
+        name: row.name,
+        role: row.role,
+        department: row.department,
+        studentId: row.role === 'student' ? row.student_id : row.teacher_id,
+        class_name: row.class_name || '',
+        title: row.title || '',
+        active: row.active
+      }
       this.dialogVisible = true
     },
     async handleStatusChange (id, status, role) {
@@ -466,36 +491,73 @@ export default {
     async submitForm () {
       try {
         await this.$refs.userForm.validate()
+
+        const formData = {
+          username: this.userForm.username,
+          name: this.userForm.name,
+          role: this.userForm.role,
+          department: this.userForm.department,
+          password: this.userForm.password,
+          active: this.userForm.active
+        }
+
+        // 根据角色添加不同的字段
+        if (this.userForm.role === 'student') {
+          formData.class_name = this.userForm.class_name
+          formData.student_id = this.userForm.studentId
+        } else {
+          formData.title = this.userForm.title
+          formData.teacher_id = this.userForm.studentId
+        }
+
         if (this.userForm.id) {
-          // 编辑用户时，根据角色处理字段
-          const userData = {
-            role: this.userForm.role,
-            name: this.userForm.name,
-            email: this.userForm.email,
-            department: this.userForm.department
-          }
-
-          // 根据角色添加特定字段
-          if (this.userForm.role === 'student') {
-            userData.class = this.userForm.class_name
-          } else {
-            userData.title = this.userForm.title
-          }
-
-          await axios.put(`/admin/users/${this.userForm.id}`, userData)
+          // 更新用户
+          await axios.put(`/admin/users/${this.userForm.id}`, formData)
           this.$message.success('更新成功')
         } else {
-          await axios.post('/admin/users', this.userForm)
+          // 创建用户
+          await axios.post('/admin/users', formData)
           this.$message.success('创建成功')
         }
+
         this.dialogVisible = false
-        this.fetchUsers()
+        this.fetchUsers() // 重新获取用户列表
       } catch (error) {
-        if (error.errorFields) {
-          // 表单验证错误
-          return
-        }
-        this.$message.error('操作失败')
+        console.error('表单提交失败:', error)
+        this.$message.error(error.response?.data?.message || '操作失败')
+      }
+    },
+    resetForm () {
+      this.userForm = {
+        username: '',
+        name: '',
+        role: 'student',
+        studentId: '',
+        department: '',
+        class_name: '',
+        title: '',
+        password: '',
+        active: true
+      }
+      if (this.$refs.userForm) {
+        this.$refs.userForm.resetFields()
+      }
+    },
+    handleRoleChange () {
+      if (this.userForm.role === 'student') {
+        this.userForm.title = ''
+      } else if (this.userForm.role === 'teacher') {
+        this.userForm.class_name = ''
+      }
+      if (this.$refs.userForm) {
+        this.$refs.userForm.clearValidate()
+      }
+    }
+  },
+  watch: {
+    'userForm.role': {
+      handler (newRole) {
+        this.handleRoleChange()
       }
     }
   }
@@ -534,5 +596,20 @@ export default {
   display: flex;
   justify-content: flex-end;
   padding-right: 20px;
+}
+
+.el-form-item {
+  margin-bottom: 20px;
+}
+
+.el-select {
+  width: 100%;
+}
+
+.el-input.is-disabled .el-input__inner {
+  background-color: #f5f7fa;
+  border-color: #e4e7ed;
+  color: #606266;
+  cursor: not-allowed;
 }
 </style>
