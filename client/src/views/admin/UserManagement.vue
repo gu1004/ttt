@@ -3,30 +3,32 @@
     <!-- 顶部操作区 -->
     <div class="header-actions">
       <div class="left">
-        <el-button type="primary" @click="handleAdd">创建用户</el-button>
+        <el-button type="primary" @click="handleAdd" class="action-button">创建用户</el-button>
         <el-button
           type="warning"
           @click="handleBatchReset"
           :disabled="!selectedUsers.length"
+          class="action-button"
         >批量重置密码</el-button>
         <el-button
           type="danger"
           @click="handleBatchDelete"
           :disabled="!selectedUsers.length"
+          class="action-button"
         >批量删除</el-button>
       </div>
       <div class="right">
-        <el-select v-model="filterRole" placeholder="角色筛选" clearable>
+        <el-select v-model="filterRole" placeholder="角色筛选" clearable class="filter-select">
           <el-option label="学生" value="student" />
           <el-option label="教师" value="teacher" />
         </el-select>
-        <el-select v-model="filterStatus" placeholder="状态筛选" clearable>
+        <el-select v-model="filterStatus" placeholder="状态筛选" clearable class="filter-select">
           <el-option label="启用" :value="true" />
           <el-option label="禁用" :value="false" />
         </el-select>
         <el-input
           v-model="searchQuery"
-          placeholder="搜索用户名/姓名"
+          placeholder="搜索用户"
           prefix-icon="el-icon-search"
           class="search-input"
         />
@@ -59,37 +61,44 @@
           {{ scope.row.role === 'student' ? scope.row.class_name : scope.row.title }}
         </template>
       </el-table-column>
-      <el-table-column prop="active" label="状态" width="180">
+      <el-table-column prop="active" label="状态" width="100" align="center">
         <template slot-scope="scope">
-          <div class="switch-wrapper">
-            <span class="switch-text">{{ scope.row.active ? '启用' : '禁用' }}</span>
-            <el-switch
-              v-model="scope.row.active"
-              @change="(val) => handleStatusChange(scope.row.id, val, scope.row.role)"
-              :active-value="true"
-              :inactive-value="false"
-            />
-          </div>
+          <el-tooltip :content="scope.row.active ? '点击禁用' : '点击启用'" placement="top">
+            <i
+              :class="[
+                'el-icon-' + (scope.row.active ? 'unlock' : 'lock'),
+                'status-icon',
+                scope.row.active ? 'active' : 'inactive'
+              ]"
+              @click="toggleUserStatus(scope.row)"
+            ></i>
+          </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right">
+      <el-table-column label="操作" width="270" fixed="right">
         <template slot-scope="scope">
           <el-button
             size="mini"
+            class="el-icon-edit"
             @click="handleEdit(scope.row)"
           >编辑</el-button>
           <el-button
             size="mini"
+            class="el-icon-refresh"
             type="warning"
             @click="handleResetPassword(scope.row)"
           >重置密码</el-button>
           <el-button
             size="mini"
+            class="el-icon-delete"
             type="danger"
             @click="handleDelete(scope.row)"
           >删除</el-button>
         </template>
       </el-table-column>
+      <template slot-scope="scope" slot="append">
+        <div :data-user-id="scope.row.id"></div>
+      </template>
     </el-table>
 
     <!-- 分页器 -->
@@ -189,6 +198,7 @@
 
 <script>
 import axios from '@/utils/axios'
+import { Message } from 'element-ui'
 
 export default {
   name: 'UserManagement',
@@ -261,6 +271,10 @@ export default {
         password: [
           { required: true, message: '请输入密码', trigger: 'blur' }
         ]
+      },
+      statusMap: {
+        true: '启用',
+        false: '禁用'
       }
     }
   },
@@ -303,7 +317,10 @@ export default {
       try {
         this.loading = true
         const response = await axios.get('/admin/users')
-        this.users = response.data
+        this.users = response.data.map(user => ({
+          ...user,
+          active: Boolean(user.active)
+        }))
       } catch (error) {
         this.$message.error('获取用户列表失败')
       } finally {
@@ -349,16 +366,39 @@ export default {
       }
       this.dialogVisible = true
     },
-    async handleStatusChange (id, status, role) {
+    async toggleUserStatus (row) {
+      const newStatus = !row.active
+      const icon = document.querySelector(`[data-user-id="${row.id}"] .status-icon`)
+
       try {
-        await axios.put(`/admin/users/${id}/status`, { active: status, role })
-        this.$message.success('状态更新成功')
+        // 添加旋转动画类
+        if (icon) icon.classList.add('rotating')
+
+        // 修改 API 路径，添加用户角色信息
+        await axios.put(`/admin/users/${row.id}/toggle-status`, {
+          active: newStatus,
+          role: row.role
+        })
+
+        // 更新本地状态
+        this.$set(row, 'active', newStatus)
+
+        Message({
+          type: 'success',
+          message: `已${newStatus ? '启用' : '禁用'}该用户`,
+          duration: 2000
+        })
       } catch (error) {
-        this.$message.error('状态更新失败')
-        // 回滚状态
-        const user = this.users.find(u => u.id === id)
-        if (user) {
-          user.active = !status
+        console.error('状态更新失败:', error)
+        Message.error('状态更新失败')
+        // 恢复原状态
+        this.$set(row, 'active', !newStatus)
+      } finally {
+        // 动画结束后移除类
+        if (icon) {
+          setTimeout(() => {
+            icon.classList.remove('rotating')
+          }, 1000)
         }
       }
     },
@@ -552,6 +592,43 @@ export default {
       if (this.$refs.userForm) {
         this.$refs.userForm.clearValidate()
       }
+    },
+    async batchUpdateStatus (ids, active) {
+      try {
+        // 添加动画效果到所有选中的图标
+        ids.forEach(id => {
+          const icon = document.querySelector(`[data-user-id="${id}"] .status-icon`)
+          if (icon) icon.classList.add('rotating')
+        })
+
+        await axios.put('/admin/users/batch-status', {
+          ids,
+          active
+        })
+
+        // 更新本地数据
+        ids.forEach(id => {
+          const index = this.users.findIndex(u => u.id === id)
+          if (index !== -1) {
+            this.$set(this.users, index, {
+              ...this.users[index],
+              active
+            })
+          }
+        })
+
+        this.$message.success('批量更新状态成功')
+      } catch (error) {
+        this.$message.error('批量更新状态失败')
+      } finally {
+        // 移除所有动画效果
+        setTimeout(() => {
+          ids.forEach(id => {
+            const icon = document.querySelector(`[data-user-id="${id}"] .status-icon`)
+            if (icon) icon.classList.remove('rotating')
+          })
+        }, 1000)
+      }
     }
   },
   watch: {
@@ -559,6 +636,17 @@ export default {
       handler (newRole) {
         this.handleRoleChange()
       }
+    },
+    filterStatus: {
+      handler (newVal) {
+        this.currentPage = 1
+      }
+    },
+    users: {
+      handler (newUsers) {
+        console.log('用户数据已更新')
+      },
+      deep: true
     }
   }
 }
@@ -578,11 +666,16 @@ export default {
 
 .right {
   display: flex;
-  gap: 10px;
+  gap: 15px;
+  align-items: center;
+}
+
+.filter-select {
+  width: 100px;
 }
 
 .search-input {
-  width: 200px;
+  width: 300px;
 }
 
 .switch-wrapper {
@@ -611,5 +704,45 @@ export default {
   border-color: #e4e7ed;
   color: #606266;
   cursor: not-allowed;
+}
+
+.status-icon {
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-icon.active {
+  color: #67C23A;
+}
+
+.status-icon.inactive {
+  color: #F56C6C;
+}
+
+.status-icon:hover {
+  transform: scale(1.2);
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-icon.rotating {
+  animation: rotate 1s linear;
+}
+
+.left {
+  display: flex;
+  gap: 10px;
+}
+
+.action-button {
+  min-width: 90px;
 }
 </style>
